@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyber Pokédex — Admin</title>
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root {
+    --ground:  #14202B;
+    --surface: #1C2B39;
+    --surface2:#233647;
+    --ink:     #EAF0F3;
+    --muted:   #8FA3B0;
+    --line:    #2E4152;
+    --accent:  #FFCB05;
+    --aurora:  #6C82F0;
+    --danger:  #F95587;
+    --ok:      #7AC74C;
+    --radius: 14px;
+    --maxw: 880px;
+    --display: "Outfit", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, sans-serif;
+    --mono: "Space Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--ground); color: var(--ink); font-family: var(--body);
+    line-height: 1.5; min-height: 100vh;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 40px 20px 80px; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: #22264A; background: var(--accent); display: inline-flex; align-items: center;
+    padding: 5px 12px; border-radius: 999px; font-weight: 700;
+  }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 4vw, 36px); margin: 14px 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 30px; }
+
+  /* ---- Gate screen ---- */
+  .gate { max-width: 380px; margin: 12vh auto 0; text-align: center; }
+  .gate input {
+    width: 100%; margin-top: 18px; padding: 13px 16px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    font-family: var(--body); font-size: 15px; outline: none;
+  }
+  .gate input:focus { border-color: var(--aurora); }
+  .gate button { margin-top: 12px; }
+  .gate-error { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+  /* ---- Buttons ---- */
+  button {
+    font-family: var(--body); font-weight: 600; font-size: 14px; cursor: pointer;
+    border-radius: 10px; border: 1px solid transparent; padding: 11px 18px;
+    background: var(--aurora); color: #fff; transition: transform .12s ease, opacity .12s ease;
+  }
+  button:hover { transform: translateY(-1px); }
+  button.secondary { background: transparent; border-color: var(--line); color: var(--ink); }
+  button.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+  button.full { width: 100%; }
+  button:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+  /* ---- Status banner ---- */
+  .status { font-family: var(--mono); font-size: 12px; padding: 10px 14px; border-radius: 10px; margin-bottom: 22px; display: none; }
+  .status.show { display: block; }
+  .status.ok { background: rgba(122,199,76,0.12); color: var(--ok); border: 1px solid rgba(122,199,76,0.3); }
+  .status.err { background: rgba(249,85,135,0.12); color: var(--danger); border: 1px solid rgba(249,85,135,0.3); }
+
+  /* ---- Form ---- */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; margin-bottom: 30px; }
+  .panel h2 { font-family: var(--display); font-size: 18px; margin-bottom: 4px; }
+  .panel .hint { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .field-row.single { grid-template-columns: 1fr; }
+  @media (max-width: 560px){ .field-row { grid-template-columns: 1fr; } }
+
+  label { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  input[type="text"], input[type="number"], select {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--surface2); color: var(--ink); font-family: var(--body); font-size: 14px; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--aurora); }
+  select { appearance: none; background-image: none; }
+
+  .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+  /* ---- List ---- */
+  .list-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+  .list-head h2 { font-family: var(--display); font-size: 18px; }
+  .count { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .row {
+    display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 14px;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; background: var(--surface);
+  }
+  .row .dex { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .row .name { font-family: var(--display); font-weight: 700; font-size: 15px; }
+  .row .types { display: flex; gap: 6px; margin-top: 3px; }
+  .row .badge { font-family: var(--mono); font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; color: #fff; }
+  .row .actions { display: flex; gap: 8px; }
+  .row .actions button { padding: 8px 12px; font-size: 13px; }
+
+  .empty-list { color: var(--muted); font-size: 14px; padding: 20px; text-align: center; }
+
+  a.back-link { color: var(--muted); font-family: var(--mono); font-size: 12px; text-decoration: none; }
+  a.back-link:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ================= PASSWORD GATE ================= -->
+<div id="gateScreen" class="wrap">
+  <div class="gate">
+    <span class="eyebrow">Restricted</span>
+    <h1>Hyber Admin</h1>
+    <p class="sub">Enter the admin password to manage the Pokédex.</p>
+    <input type="password" id="passwordInput" placeholder="Password" autocomplete="off">
+    <button class="full" id="gateSubmit">Enter</button>
+    <div class="gate-error" id="gateError"></div>
+  </div>
+</div>
+
+<!-- ================= ADMIN PANEL ================= -->
+<div id="adminScreen" class="wrap" style="display:none">
+  <a class="back-link" href="pokedex.html">&larr; View live Pokédex</a>
+  <span class="eyebrow" style="margin-top:16px">Admin</span>
+  <h1>Manage the Hyber Pokédex</h1>
+  <p class="sub">Changes here save straight to the database and appear on the live site immediately.</p>
+
+  <div class="status" id="statusBanner"></div>
+
+  <div class="panel">
+    <h2 id="formTitle">Add a Pokémon</h2>
+    <p class="hint">Fill in the fields below. Dex number must be unique.</p>
+
+    <form id="pokemonForm">
+      <input type="hidden" id="editingDex" value="">
+
+      <div class="field-row">
+        <div>
+          <label for="f-dex">Dex Number</label>
+          <input type="number" id="f-dex" min="1" required>
+        </div>
+        <div>
+          <label for="f-name">Name</label>
+          <input type="text" id="f-name" placeholder="e.g. Sproutling" required>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div>
+          <label for="f-type1">Type 1</label>
+          <select id="f-type1" required></select>
+        </div>
+        <div>
+          <label for="f-type2">Type 2 (optional)</label>
+          <select id="f-type2"></select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div>
+          <label for="f-variant">Variant</label>
+          <select id="f-variant">
+            <option value="">None (native species)</option>
+            <option value="regional">Regional Form</option>
+            <option value="regional-evo">Regional Evolution</option>
+            <option value="convergent">Convergent Species</option>
+          </select>
+        </div>
+        <div>
+          <label for="f-stage">Stage</label>
+          <select id="f-stage">
+            <option value="">None</option>
+            <option value="Basic">Basic</option>
+            <option value="Stage 1">Stage 1</option>
+            <option value="Stage 2">Stage 2</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row single">
+        <div>
+          <label for="f-category">Category</label>
+          <input type="text" id="f-category" placeholder="e.g. Seedling Pokemon">
+        </div>
+      </div>
+
+      <div class="field-row single">
+        <div>
+          <label for="f-art">Art filename (optional)</label>
+          <input type="text" id="f-art" placeholder="e.g. sproutling.png">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div>
+          <label for="f-evolvesfrom">Evolves From</label>
+          <input type="text" id="f-evolvesfrom" placeholder="Pokémon name, or leave blank">
+        </div>
+        <div>
+          <label for="f-evolvesinto">Evolves Into</label>
+          <input type="text" id="f-evolvesinto" placeholder="Pokémon name, or leave blank">
+        </div>
+      </div>
+
+      <div class="field-row single">
+        <div>
+          <label for="f-method">Evolution Method</label>
+          <input type="text" id="f-method" placeholder="e.g. at Level 18, using a Leaf Stone">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="submitBtn">Add Pokémon</button>
+        <button type="button" class="secondary" id="cancelEditBtn" style="display:none">Cancel edit</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="list-head">
+    <h2>Current roster</h2>
+    <span class="count" id="listCount">0 Pokémon</span>
+  </div>
+  <div id="pokemonList"></div>
+</div>
+
+<script>
+(function(){
+
+  /* =====================================================================
+     Paste the SAME Supabase project URL and anon key you put in pokedex.html
+     ===================================================================== */
+  const SUPABASE_URL = "https://iedfbkpsiifiaowbhjad.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_kVOt7R6ECPHDnD5Y_n9WRA_LydgCPG6";
+
+  // Casual deterrent only -- see the note in setup.sql about why this
+  // isn't real security. Change this to whatever you like.
+  const ADMIN_PASSWORD = "Grendal1na101!";
+
+  const SUPABASE_CONFIGURED = SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY.length > 20;
+  let supabase = null;
+  try {
+    if(SUPABASE_CONFIGURED) supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch(e) {
+    console.error("Supabase client failed to initialize:", e);
+  }
+
+  const TYPE_COLORS = {
+    Normal:"#A8A77A", Fire:"#EE8130", Water:"#6390F0", Electric:"#F7D02C",
+    Grass:"#7AC74C", Ice:"#96D9D6", Fighting:"#C22E28", Poison:"#A33EA1",
+    Ground:"#E2BF65", Flying:"#A98FF3", Psychic:"#F95587", Bug:"#A6B91A",
+    Rock:"#B6A136", Ghost:"#735797", Dragon:"#6F35FC", Dark:"#705746",
+    Steel:"#B7B7CE", Fairy:"#D685AD"
+  };
+  const pad = n => String(n).padStart(3, "0");
+
+  function readableText(hex){
+    const c = hex.replace("#","");
+    const r = parseInt(c.slice(0,2),16), g = parseInt(c.slice(2,4),16), b = parseInt(c.slice(4,6),16);
+    const L = (0.299*r + 0.587*g + 0.114*b) / 255;
+    return L > 0.62 ? "#1a2530" : "#ffffff";
+  }
+
+  /* ---------------- Password gate ---------------- */
+  const gateScreen = document.getElementById("gateScreen");
+  const adminScreen = document.getElementById("adminScreen");
+  const passwordInput = document.getElementById("passwordInput");
+  const gateError = document.getElementById("gateError");
+
+  function tryEnter(){
+    if(passwordInput.value === ADMIN_PASSWORD){
+      gateScreen.style.display = "none";
+      adminScreen.style.display = "block";
+      sessionStorage.setItem("hyberAdminOK", "1"); // stays unlocked for this browser tab session only
+      init();
+    } else {
+      gateError.textContent = "Incorrect password.";
+    }
+  }
+  document.getElementById("gateSubmit").addEventListener("click", tryEnter);
+  passwordInput.addEventListener("keydown", e => { if(e.key === "Enter") tryEnter(); });
+
+  if(sessionStorage.getItem("hyberAdminOK") === "1"){
+    gateScreen.style.display = "none";
+    adminScreen.style.display = "block";
+    init();
+  }
+
+  /* ---------------- Status banner ---------------- */
+  const statusBanner = document.getElementById("statusBanner");
+  function showStatus(msg, kind){
+    statusBanner.textContent = msg;
+    statusBanner.className = `status show ${kind}`;
+    setTimeout(() => statusBanner.classList.remove("show"), 4000);
+  }
+
+  /* ---------------- Form setup ---------------- */
+  const typeOptions = ["", ...Object.keys(TYPE_COLORS)]
+    .map(t => `<option value="${t}">${t || "\u2014"}</option>`).join("");
+  document.getElementById("f-type1").innerHTML = typeOptions.replace('value=""', 'value="" disabled');
+  document.getElementById("f-type2").innerHTML = typeOptions;
+
+  const form = document.getElementById("pokemonForm");
+  const editingDexInput = document.getElementById("editingDex");
+  const submitBtn = document.getElementById("submitBtn");
+  const cancelEditBtn = document.getElementById("cancelEditBtn");
+  const formTitle = document.getElementById("formTitle");
+
+  function resetForm(){
+    form.reset();
+    editingDexInput.value = "";
+    submitBtn.textContent = "Add Pokémon";
+    formTitle.textContent = "Add a Pokémon";
+    cancelEditBtn.style.display = "none";
+    document.getElementById("f-dex").disabled = false;
+  }
+
+  cancelEditBtn.addEventListener("click", resetForm);
+
+  function fillForm(p){
+    editingDexInput.value = p.dex;
+    document.getElementById("f-dex").value = p.dex;
+    document.getElementById("f-dex").disabled = true; // dex is the primary key -- don't let it change mid-edit
+    document.getElementById("f-name").value = p.name;
+    document.getElementById("f-type1").value = p.type1 || "";
+    document.getElementById("f-type2").value = p.type2 || "";
+    document.getElementById("f-variant").value = p.variant || "";
+    document.getElementById("f-stage").value = p.stage || "";
+    document.getElementById("f-category").value = p.category || "";
+    document.getElementById("f-art").value = p.art || "";
+    document.getElementById("f-evolvesfrom").value = p.evolvesfrom || "";
+    document.getElementById("f-evolvesinto").value = p.evolvesinto || "";
+    document.getElementById("f-method").value = p.method || "";
+    submitBtn.textContent = "Save changes";
+    formTitle.textContent = `Editing #${pad(p.dex)} ${p.name}`;
+    cancelEditBtn.style.display = "inline-block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    if(!supabase){
+      showStatus("Not connected to a database yet -- see SETUP_GUIDE.md.", "err");
+      return;
+    }
+
+    submitBtn.disabled = true;
+
+    const isEdit = !!editingDexInput.value;
+    const record = {
+      dex: Number(document.getElementById("f-dex").value),
+      name: document.getElementById("f-name").value.trim(),
+      type1: document.getElementById("f-type1").value,
+      type2: document.getElementById("f-type2").value,
+      variant: document.getElementById("f-variant").value,
+      stage: document.getElementById("f-stage").value,
+      category: document.getElementById("f-category").value.trim(),
+      art: document.getElementById("f-art").value.trim(),
+      evolvesfrom: document.getElementById("f-evolvesfrom").value.trim(),
+      evolvesinto: document.getElementById("f-evolvesinto").value.trim(),
+      method: document.getElementById("f-method").value.trim()
+    };
+
+    if(!record.type1){
+      showStatus("Type 1 is required.", "err");
+      submitBtn.disabled = false;
+      return;
+    }
+
+    const { error } = isEdit
+      ? await supabase.from("pokemon").update(record).eq("dex", record.dex)
+      : await supabase.from("pokemon").insert(record);
+
+    submitBtn.disabled = false;
+
+    if(error){
+      showStatus(`Couldn't save: ${error.message}`, "err");
+      return;
+    }
+
+    showStatus(isEdit ? `Saved changes to ${record.name}.` : `Added ${record.name} to the Pokédex.`, "ok");
+    resetForm();
+    loadList();
+  });
+
+  /* ---------------- List + delete ---------------- */
+  const listEl = document.getElementById("pokemonList");
+  const listCount = document.getElementById("listCount");
+
+  async function loadList(){
+    if(!supabase){
+      listEl.innerHTML = `<div class="empty-list">Not connected to a database yet -- paste your Supabase Project URL and anon key at the top of this page's code, then reload. See SETUP_GUIDE.md.</div>`;
+      listCount.textContent = "0 Pok\u00e9mon";
+      return;
+    }
+
+    const { data, error } = await supabase.from("pokemon").select("*").order("dex", { ascending: true });
+
+    if(error){
+      listEl.innerHTML = `<div class="empty-list">Couldn't load the roster: ${error.message}</div>`;
+      return;
+    }
+
+    listCount.textContent = `${data.length} Pok\u00e9mon`;
+
+    if(!data.length){
+      listEl.innerHTML = `<div class="empty-list">No Pok\u00e9mon yet -- add your first one above.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = data.map(p => `
+      <div class="row" data-dex="${p.dex}">
+        <div class="dex">#${pad(p.dex)}</div>
+        <div>
+          <div class="name">${p.name}</div>
+          <div class="types">
+            ${p.type1 ? `<span class="badge" style="background:${TYPE_COLORS[p.type1]};color:${readableText(TYPE_COLORS[p.type1])}">${p.type1}</span>` : ""}
+            ${p.type2 ? `<span class="badge" style="background:${TYPE_COLORS[p.type2]};color:${readableText(TYPE_COLORS[p.type2])}">${p.type2}</span>` : ""}
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" data-action="edit">Edit</button>
+          <button type="button" class="danger" data-action="delete">Delete</button>
+        </div>
+      </div>`).join("");
+
+    listEl.querySelectorAll('[data-action="edit"]').forEach(btn => {
+      btn.addEventListener("click", () => {
+        const dex = Number(btn.closest(".row").dataset.dex);
+        const p = data.find(x => x.dex === dex);
+        if(p) fillForm(p);
+      });
+    });
+
+    listEl.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const row = btn.closest(".row");
+        const dex = Number(row.dataset.dex);
+        const p = data.find(x => x.dex === dex);
+        if(!confirm(`Delete #${pad(dex)} ${p ? p.name : ""}? This can't be undone.`)) return;
+
+        const { error } = await supabase.from("pokemon").delete().eq("dex", dex);
+        if(error){
+          showStatus(`Couldn't delete: ${error.message}`, "err");
+          return;
+        }
+        showStatus(`Deleted ${p ? p.name : "Pok\u00e9mon #" + pad(dex)}.`, "ok");
+        loadList();
+      });
+    });
+  }
+
+  function init(){
+    loadList();
+  }
+
+})();
+</script>
+</body>
+</html>

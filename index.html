@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<!-- saved from url=(0040)file:///Users/jon/Downloads/index_4.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyber Regional Pokédex</title>
+<meta name="description" content="A regional Pokédex for the fictional Hyber region.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root {
+    /* ---- Hyber brand palette (edit these to re-theme the whole site) ---- */
+    --ground:  #EAF0F3;   /* page background */
+    --surface: #FFFFFF;   /* cards + panels */
+    --ink:     #14202B;   /* main text */
+    --muted:   #5C6B78;   /* secondary text */
+    --line:    #D8E1E7;   /* borders */
+    --accent:  #FFCB05;   /* primary Hyber accent (gold — pops on the indigo) */
+    --aurora:  #4C63E6;   /* secondary accent (indigo) */
+
+    --radius: 16px;
+    --maxw: 1320px;
+    --display: "Outfit", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, sans-serif;
+    --mono: "Space Mono", ui-monospace, Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+
+  /* ---------------- Header / hero ---------------- */
+  .hero {
+    background: #232C63;           /* rich playful indigo (flat, no gradient) */
+    color: #EAF6F8;
+    border-radius: 0 0 28px 28px;
+    overflow: hidden;
+    position: relative;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  /* type-colour confetti (flat, no gradient) */
+  .hero-decor { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .hero-decor .dot {
+    position: absolute; width: var(--s,12px); height: var(--s,12px); border-radius: 50%;
+    background: var(--c); opacity: 0.9; animation: bob 6s ease-in-out infinite; animation-delay: var(--d,0s);
+  }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+  @media (max-width: 640px){ .hero-decor .dot { opacity: 0.55; } }
+
+  .hero-inner {
+    position: relative; z-index: 1;
+    padding: clamp(46px, 6vw, 66px) clamp(6px, 2.6vw, 26px) clamp(40px, 5vw, 54px);
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700;
+    color: #22264A;
+    background: var(--accent);
+    display: inline-flex; align-items: center;
+    padding: 6px 13px; border-radius: 999px;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(34px, 6vw, 60px); line-height: 1.02; letter-spacing: -0.02em;
+    margin: 16px 0 12px;
+  }
+  h1 .glow { color: var(--accent); }
+  .hero p { color: #B9CBD6; max-width: 54ch; font-size: 16px; }
+  .count-chip {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 20px;
+    font-family: var(--mono); font-size: 13px; color: #cfe0e8;
+    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+    padding: 7px 14px; border-radius: 999px;
+  }
+
+  /* ---------------- Controls ---------------- */
+  .controls { position: sticky; top: 0; z-index: 20; background: var(--ground); padding: 18px 0 10px; }
+  .searchbar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 16px; box-shadow: 0 4px 14px -10px rgba(20,32,43,0.4);
+  }
+  .searchbar svg { flex: none; color: var(--muted); }
+  .searchbar input {
+    border: none; outline: none; width: 100%; font-family: var(--body); font-size: 15px; color: var(--ink); background: transparent;
+  }
+  .searchbar input::placeholder { color: #9aa8b2; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 13px; border-radius: 999px; cursor: pointer;
+    background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+    transition: transform 0.12s ease, box-shadow 0.15s ease;
+  }
+  .chip:hover { transform: translateY(-1px); }
+  .chip .swatch { width: 9px; height: 9px; border-radius: 50%; }
+  .chip[aria-pressed="true"] { color: #fff; border-color: transparent; box-shadow: 0 6px 16px -8px rgba(20,32,43,0.5); }
+  .chip[aria-pressed="true"] .swatch { box-shadow: 0 0 0 2px rgba(255,255,255,0.55); }
+
+  .resultline { font-family: var(--mono); font-size: 12px; color: var(--muted); margin: 16px 0 8px; }
+
+  /* ---------------- Grid ---------------- */
+  .grid {
+    display: grid; gap: 14px; padding-bottom: 60px;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (min-width: 420px){ .grid { grid-template-columns: repeat(4, 1fr);} }
+  @media (min-width: 560px){ .grid { grid-template-columns: repeat(5, 1fr);} }
+  @media (min-width: 720px){ .grid { grid-template-columns: repeat(6, 1fr);} }
+  @media (min-width: 900px){ .grid { grid-template-columns: repeat(7, 1fr);} }
+  @media (min-width: 1080px){ .grid { grid-template-columns: repeat(8, 1fr);} }
+  @media (min-width: 1240px){ .grid { grid-template-columns: repeat(9, 1fr);} } /* 9 per row on desktop */
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 10px; cursor: pointer; text-align: center;
+    display: flex; flex-direction: column; gap: 6px;
+    transition: transform 0.16s ease, box-shadow 0.18s ease, border-color 0.16s ease;
+  }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 16px 30px -18px rgba(20,32,43,0.4); border-color: #c4d2da; }
+  .card:focus-visible { outline: 3px solid var(--aurora); outline-offset: 2px; }
+
+  .thumb { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 10px; overflow: hidden; display: grid; place-items: center; }
+  .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 8%; }
+  .thumb .ball { width: 46%; height: 46%; opacity: 0.55; }
+
+  .dex { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .pname { font-family: var(--display); font-weight: 700; font-size: 13px; line-height: 1.15; }
+  .variant-flag { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--aurora); }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+  .badge {
+    font-family: var(--mono); font-weight: 700; font-size: 10px; letter-spacing: 0.03em;
+    padding: 2px 8px; border-radius: 999px; color: #fff; text-transform: uppercase;
+  }
+
+  .empty { text-align: center; padding: 70px 20px; color: var(--muted); }
+  .empty strong { color: var(--ink); font-family: var(--display); }
+
+  /* ---------------- Modal ---------------- */
+  .overlay {
+    position: fixed; inset: 0; z-index: 50; display: none;
+    align-items: center; justify-content: center; padding: 20px;
+    background: rgba(11,18,25,0.55); backdrop-filter: blur(4px);
+  }
+  .overlay.open { display: flex; animation: fade 0.18s ease; }
+  @keyframes fade { from { opacity: 0; } }
+
+  .modal {
+    background: var(--surface); border-radius: 22px; width: min(760px, 100%);
+    max-height: 90vh; overflow: auto; position: relative;
+    box-shadow: 0 40px 80px -30px rgba(11,18,25,0.7);
+    animation: pop 0.22s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes pop { from { transform: translateY(14px) scale(0.98); opacity: 0; } }
+  .modal-head { padding: 26px 30px 20px; position: relative; }
+  .modal-head .banner {
+    position: absolute; inset: 0 0 auto 0; height: 150px; border-radius: 22px 22px 0 0; opacity: 0.9;
+  }
+  .modal-grid { display: grid; grid-template-columns: 220px 1fr; gap: 26px; padding: 20px 30px 30px; align-items: start; }
+  @media (max-width: 620px){ .modal-grid { grid-template-columns: 1fr; } }
+
+  .modal-art { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 16px; overflow: hidden; display: grid; place-items: center; border: 1px solid var(--line); }
+  .modal-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 10%; }
+  .modal-art .ball { width: 42%; height: 42%; opacity: 0.5; }
+
+  .m-dex { font-family: var(--mono); color: var(--muted); font-size: 14px; }
+  .m-name { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 4vw, 36px); line-height: 1.05; margin: 2px 0 6px; letter-spacing: -0.01em; }
+  .m-pill { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: var(--aurora); padding: 4px 10px; border-radius: 999px; margin-bottom: 10px; }
+  .m-badges { display: flex; gap: 8px; margin: 12px 0 18px; }
+  .m-badges .badge { font-size: 12px; padding: 5px 14px; }
+
+  .field { border-top: 1px solid var(--line); padding: 13px 0; }
+  .field .label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .field .value { font-size: 15px; }
+  .evo-line { margin: 3px 0; }
+  .evo-link { font-family: inherit; font-size: 15px; font-weight: 600; color: var(--aurora); background: none; border: none; padding: 0; cursor: pointer; border-bottom: 1px solid transparent; }
+  .evo-link:hover { border-bottom-color: var(--aurora); }
+  .evo-req { background: linear-gradient(transparent 60%, rgba(255,203,5,0.40) 0); font-weight: 600; padding: 0 2px; }
+
+  .close {
+    position: absolute; top: 16px; right: 16px; z-index: 3;
+    width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+    background: rgba(255,255,255,0.85); color: var(--ink); font-size: 20px; line-height: 1;
+    display: grid; place-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+  .close:hover { background: #fff; }
+
+  footer { border-top: 1px solid var(--line); padding: 30px 0 50px; font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; }
+
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--aurora); outline-offset: 2px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce){ *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <div class="hero-decor" aria-hidden="true">
+      <span class="dot" style="--c:#EE8130;--s:16px;top:20%;right:14%;--d:0s"></span>
+      <span class="dot" style="--c:#6390F0;--s:11px;top:60%;right:9%;--d:.6s"></span>
+      <span class="dot" style="--c:#F7D02C;--s:20px;top:70%;right:30%;--d:1.1s"></span>
+      <span class="dot" style="--c:#7AC74C;--s:13px;top:14%;right:34%;--d:1.6s"></span>
+      <span class="dot" style="--c:#F95587;--s:10px;top:42%;right:19%;--d:.3s"></span>
+      <span class="dot" style="--c:#6F35FC;--s:15px;top:30%;right:46%;--d:2s"></span>
+      <span class="dot" style="--c:#96D9D6;--s:9px;top:78%;right:44%;--d:.9s"></span>
+      <span class="dot" style="--c:#D685AD;--s:12px;top:52%;right:52%;--d:1.4s"></span>
+      <span class="dot" style="--c:#EE8130;--s:9px;top:12%;right:52%;--d:.5s"></span>
+    </div>
+    <div class="wrap hero-inner">
+      <span class="kicker">Regional Pokédex</span>
+      <h1>The <span class="glow">Hyber</span> Region</h1>
+      <p>A field catalogue of every Pokémon discovered across Hyber — its native species, regional forms, and the convergent creatures found nowhere else.</p>
+      <div class="count-chip" id="heroCount">20 Pokemon catalogued</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ================= CONTROLS ================= -->
+    <div class="controls">
+      <div class="searchbar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input id="search" type="search" placeholder="Search by name or number (e.g. Sproutling, 001, #12)" aria-label="Search Pokémon">
+      </div>
+      <div class="filters" id="filters" role="group" aria-label="Filter by type"><button class="chip" data-type="All" aria-pressed="true" style="background:var(--ink);color:#fff"><span class="swatch" style="background:var(--ink)"></span>All</button><button class="chip" data-type="Normal" aria-pressed="false" style=""><span class="swatch" style="background:#A8A77A"></span>Normal</button><button class="chip" data-type="Fire" aria-pressed="false" style=""><span class="swatch" style="background:#EE8130"></span>Fire</button><button class="chip" data-type="Water" aria-pressed="false" style=""><span class="swatch" style="background:#6390F0"></span>Water</button><button class="chip" data-type="Electric" aria-pressed="false" style=""><span class="swatch" style="background:#F7D02C"></span>Electric</button><button class="chip" data-type="Grass" aria-pressed="false" style=""><span class="swatch" style="background:#7AC74C"></span>Grass</button><button class="chip" data-type="Ice" aria-pressed="false" style=""><span class="swatch" style="background:#96D9D6"></span>Ice</button><button class="chip" data-type="Fighting" aria-pressed="false" style=""><span class="swatch" style="background:#C22E28"></span>Fighting</button><button class="chip" data-type="Poison" aria-pressed="false" style=""><span class="swatch" style="background:#A33EA1"></span>Poison</button><button class="chip" data-type="Ground" aria-pressed="false" style=""><span class="swatch" style="background:#E2BF65"></span>Ground</button><button class="chip" data-type="Flying" aria-pressed="false" style=""><span class="swatch" style="background:#A98FF3"></span>Flying</button><button class="chip" data-type="Psychic" aria-pressed="false" style=""><span class="swatch" style="background:#F95587"></span>Psychic</button><button class="chip" data-type="Bug" aria-pressed="false" style=""><span class="swatch" style="background:#A6B91A"></span>Bug</button><button class="chip" data-type="Rock" aria-pressed="false" style=""><span class="swatch" style="background:#B6A136"></span>Rock</button><button class="chip" data-type="Ghost" aria-pressed="false" style=""><span class="swatch" style="background:#735797"></span>Ghost</button><button class="chip" data-type="Dragon" aria-pressed="false" style=""><span class="swatch" style="background:#6F35FC"></span>Dragon</button><button class="chip" data-type="Dark" aria-pressed="false" style=""><span class="swatch" style="background:#705746"></span>Dark</button><button class="chip" data-type="Steel" aria-pressed="false" style=""><span class="swatch" style="background:#B7B7CE"></span>Steel</button><button class="chip" data-type="Fairy" aria-pressed="false" style=""><span class="swatch" style="background:#D685AD"></span>Fairy</button></div>
+    </div>
+
+    <div class="resultline" id="resultline">Showing 20 of 20 Pokemon</div>
+    <div class="grid" id="grid">
+      <div class="card" tabindex="0" role="button" data-dex="1" aria-label="Sproutling, number 001">
+        <div class="thumb" style="background:linear-gradient(160deg, #7AC74C22, #7AC74C0d);color:#7AC74C"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#001</div>
+        <div class="pname">Sproutling</div>
+        
+        <div class="badges"><span class="badge" style="background:#7AC74C;color:#1a2530">Grass</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="2" aria-label="Thornbuck, number 002">
+        <div class="thumb" style="background:linear-gradient(160deg, #7AC74C22, #7AC74C0d);color:#7AC74C"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#002</div>
+        <div class="pname">Thornbuck</div>
+        
+        <div class="badges"><span class="badge" style="background:#7AC74C;color:#1a2530">Grass</span><span class="badge" style="background:#C22E28;color:#ffffff">Fighting</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="3" aria-label="Elderthorn, number 003">
+        <div class="thumb" style="background:linear-gradient(160deg, #7AC74C22, #7AC74C0d);color:#7AC74C"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#003</div>
+        <div class="pname">Elderthorn</div>
+        
+        <div class="badges"><span class="badge" style="background:#7AC74C;color:#1a2530">Grass</span><span class="badge" style="background:#705746;color:#ffffff">Dark</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="4" aria-label="Cindcub, number 004">
+        <div class="thumb" style="background:linear-gradient(160deg, #EE813022, #EE81300d);color:#EE8130"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#004</div>
+        <div class="pname">Cindcub</div>
+        
+        <div class="badges"><span class="badge" style="background:#EE8130;color:#ffffff">Fire</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="5" aria-label="Pyrolux, number 005">
+        <div class="thumb" style="background:linear-gradient(160deg, #EE813022, #EE81300d);color:#EE8130"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#005</div>
+        <div class="pname">Pyrolux</div>
+        
+        <div class="badges"><span class="badge" style="background:#EE8130;color:#ffffff">Fire</span><span class="badge" style="background:#C22E28;color:#ffffff">Fighting</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="6" aria-label="Drizzlet, number 006">
+        <div class="thumb" style="background:linear-gradient(160deg, #6390F022, #6390F00d);color:#6390F0"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#006</div>
+        <div class="pname">Drizzlet</div>
+        
+        <div class="badges"><span class="badge" style="background:#6390F0;color:#ffffff">Water</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="7" aria-label="Torreel, number 007">
+        <div class="thumb" style="background:linear-gradient(160deg, #6390F022, #6390F00d);color:#6390F0"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#007</div>
+        <div class="pname">Torreel</div>
+        
+        <div class="badges"><span class="badge" style="background:#6390F0;color:#ffffff">Water</span><span class="badge" style="background:#F7D02C;color:#1a2530">Electric</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="8" aria-label="Voltfen, number 008">
+        <div class="thumb" style="background:linear-gradient(160deg, #F7D02C22, #F7D02C0d);color:#F7D02C"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#008</div>
+        <div class="pname">Voltfen</div>
+        
+        <div class="badges"><span class="badge" style="background:#F7D02C;color:#1a2530">Electric</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="9" aria-label="Sableep, number 009">
+        <div class="thumb" style="background:linear-gradient(160deg, #A8A77A22, #A8A77A0d);color:#A8A77A"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#009</div>
+        <div class="pname">Sableep</div>
+        
+        <div class="badges"><span class="badge" style="background:#A8A77A;color:#1a2530">Normal</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="10" aria-label="Rampart, number 010">
+        <div class="thumb" style="background:linear-gradient(160deg, #A8A77A22, #A8A77A0d);color:#A8A77A"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#010</div>
+        <div class="pname">Rampart</div>
+        
+        <div class="badges"><span class="badge" style="background:#A8A77A;color:#1a2530">Normal</span><span class="badge" style="background:#B6A136;color:#ffffff">Rock</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="11" aria-label="Mothlumen, number 011">
+        <div class="thumb" style="background:linear-gradient(160deg, #A6B91A22, #A6B91A0d);color:#A6B91A"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#011</div>
+        <div class="pname">Mothlumen</div>
+        
+        <div class="badges"><span class="badge" style="background:#A6B91A;color:#1a2530">Bug</span><span class="badge" style="background:#D685AD;color:#1a2530">Fairy</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="12" aria-label="Hyb. Litwick, number 012">
+        <div class="thumb" style="background:linear-gradient(160deg, #96D9D622, #96D9D60d);color:#96D9D6"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#012</div>
+        <div class="pname">Hyb. Litwick</div>
+        <div class="variant-flag">Regional Form</div>
+        <div class="badges"><span class="badge" style="background:#96D9D6;color:#1a2530">Ice</span><span class="badge" style="background:#735797;color:#ffffff">Ghost</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="13" aria-label="Glacelier, number 013">
+        <div class="thumb" style="background:linear-gradient(160deg, #96D9D622, #96D9D60d);color:#96D9D6"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#013</div>
+        <div class="pname">Glacelier</div>
+        <div class="variant-flag">Regional Evolution</div>
+        <div class="badges"><span class="badge" style="background:#96D9D6;color:#1a2530">Ice</span><span class="badge" style="background:#735797;color:#ffffff">Ghost</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="14" aria-label="Aurorix, number 014">
+        <div class="thumb" style="background:linear-gradient(160deg, #96D9D622, #96D9D60d);color:#96D9D6"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#014</div>
+        <div class="pname">Aurorix</div>
+        <div class="variant-flag">Convergent Species</div>
+        <div class="badges"><span class="badge" style="background:#96D9D6;color:#1a2530">Ice</span><span class="badge" style="background:#D685AD;color:#1a2530">Fairy</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="15" aria-label="Cryowyrm, number 015">
+        <div class="thumb" style="background:linear-gradient(160deg, #6F35FC22, #6F35FC0d);color:#6F35FC"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#015</div>
+        <div class="pname">Cryowyrm</div>
+        
+        <div class="badges"><span class="badge" style="background:#6F35FC;color:#ffffff">Dragon</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="16" aria-label="Cryodrake, number 016">
+        <div class="thumb" style="background:linear-gradient(160deg, #96D9D622, #96D9D60d);color:#96D9D6"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#016</div>
+        <div class="pname">Cryodrake</div>
+        
+        <div class="badges"><span class="badge" style="background:#96D9D6;color:#1a2530">Ice</span><span class="badge" style="background:#6F35FC;color:#ffffff">Dragon</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="17" aria-label="Bogart, number 017">
+        <div class="thumb" style="background:linear-gradient(160deg, #A33EA122, #A33EA10d);color:#A33EA1"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#017</div>
+        <div class="pname">Bogart</div>
+        
+        <div class="badges"><span class="badge" style="background:#A33EA1;color:#ffffff">Poison</span><span class="badge" style="background:#E2BF65;color:#1a2530">Ground</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="18" aria-label="Ferrowl, number 018">
+        <div class="thumb" style="background:linear-gradient(160deg, #B7B7CE22, #B7B7CE0d);color:#B7B7CE"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#018</div>
+        <div class="pname">Ferrowl</div>
+        
+        <div class="badges"><span class="badge" style="background:#B7B7CE;color:#1a2530">Steel</span><span class="badge" style="background:#A98FF3;color:#1a2530">Flying</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="19" aria-label="Psywisp, number 019">
+        <div class="thumb" style="background:linear-gradient(160deg, #F9558722, #F955870d);color:#F95587"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#019</div>
+        <div class="pname">Psywisp</div>
+        
+        <div class="badges"><span class="badge" style="background:#F95587;color:#ffffff">Psychic</span><span class="badge" style="background:#735797;color:#ffffff">Ghost</span></div>
+      </div>
+      <div class="card" tabindex="0" role="button" data-dex="20" aria-label="Cobblug, number 020">
+        <div class="thumb" style="background:linear-gradient(160deg, #B6A13622, #B6A1360d);color:#B6A136"><svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"></circle><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"></path><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"></circle></svg></div>
+        <div class="dex">#020</div>
+        <div class="pname">Cobblug</div>
+        
+        <div class="badges"><span class="badge" style="background:#B6A136;color:#ffffff">Rock</span><span class="badge" style="background:#A6B91A;color:#1a2530">Bug</span></div>
+      </div></div>
+    <div class="empty" id="empty" style="display:none">
+      <strong>No Pokémon found.</strong><br>Try a different name, number, or type.
+    </div>
+  </main>
+
+  <footer class="wrap">
+    Hyber Regional Pokédex · a fan-made fictional region · <span id="year">2026</span>
+  </footer>
+
+  <!-- ================= MODAL ================= -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalName">
+    <div class="modal" id="modal">
+      <button class="close" id="closeBtn" aria-label="Close">×</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+
+/* =====================================================================
+   HYBER REGIONAL POKEDEX
+   =====================================================================
+   Pokemon data now lives in Supabase, not in this file. Add / edit / remove
+   Pokemon from the admin.html page -- this page just displays whatever is
+   in the database, live.
+
+   SETUP (do this once):
+   1. Create a free project at https://supabase.com
+   2. Run setup.sql (Project -> SQL Editor -> New query -> paste -> Run)
+   3. Project Settings -> API -> copy your "Project URL" and "anon public" key
+   4. Paste them into SUPABASE_URL and SUPABASE_ANON_KEY below
+   5. Paste the SAME two values into admin.html
+   ===================================================================== */
+
+  const SUPABASE_URL = "https://iedfbkpsiifiaowbhjad.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_kVOt7R6ECPHDnD5Y_n9WRA_LydgCPG6";
+
+  const ART_FOLDER = "art/";   // where your images live. Set to "" to keep images beside this file.
+
+  const SUPABASE_CONFIGURED = SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY.length > 20;
+  let supabase = null;
+  try {
+    if(SUPABASE_CONFIGURED) supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch(e) {
+    console.error("Supabase client failed to initialize:", e);
+  }
+
+  let POKEMON = [];
+
+  async function loadPokemon(){
+    if(!supabase){
+      console.error("Supabase isn't configured yet -- paste your Project URL and anon key at the top of this script.");
+      resultline.textContent = "Pok\u00e9dex isn't connected to a database yet -- see the setup guide.";
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("pokemon")
+      .select("*")
+      .order("dex", { ascending: true });
+
+    if(error){
+      console.error("Failed to load Pokemon from Supabase:", error);
+      resultline.textContent = "Couldn't load Pokemon -- check the Supabase connection in the page source.";
+      return;
+    }
+
+    // map lowercase DB columns back to the field names the app uses
+    POKEMON = data.map(row => ({
+      dex: row.dex,
+      name: row.name,
+      variant: row.variant || "",
+      type1: row.type1,
+      type2: row.type2 || "",
+      category: row.category || "",
+      stage: row.stage || "",
+      art: row.art || "",
+      evolvesFrom: row.evolvesfrom || "",
+      evolvesInto: row.evolvesinto || "",
+      method: row.method || ""
+    }));
+  }
+
+
+  /* ---- The 18 official Pokemon types and their colours ---- */
+  const TYPE_COLORS = {
+    Normal:"#A8A77A", Fire:"#EE8130", Water:"#6390F0", Electric:"#F7D02C",
+    Grass:"#7AC74C", Ice:"#96D9D6", Fighting:"#C22E28", Poison:"#A33EA1",
+    Ground:"#E2BF65", Flying:"#A98FF3", Psychic:"#F95587", Bug:"#A6B91A",
+    Rock:"#B6A136", Ghost:"#735797", Dragon:"#6F35FC", Dark:"#705746",
+    Steel:"#B7B7CE", Fairy:"#D685AD"
+  };
+  const VARIANT_LABEL = { "regional":"Regional Form", "regional-evo":"Regional Evolution", "convergent":"Convergent Species" };
+
+  /* =====================================================================
+     App logic -- you shouldn't need to edit below here.
+     ===================================================================== */
+  const BALL_SVG = '<svg class="ball" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"/><path d="M4 50h30M66 50h30" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="50" r="13" stroke="currentColor" stroke-width="4" fill="var(--surface)"/></svg>';
+
+  const pad = n => String(n).padStart(3, "0");
+
+  // pick black or white text for readability on a given badge colour
+  function readableText(hex){
+    const c = hex.replace("#","");
+    const r = parseInt(c.slice(0,2),16), g = parseInt(c.slice(2,4),16), b = parseInt(c.slice(4,6),16);
+    const L = (0.299*r + 0.587*g + 0.114*b) / 255;
+    return L > 0.62 ? "#1a2530" : "#ffffff";
+  }
+
+  function badge(type){
+    if(!type) return "";
+    const col = TYPE_COLORS[type] || "#999";
+    return `<span class="badge" style="background:${col};color:${readableText(col)}">${type}</span>`;
+  }
+
+  function artMarkup(p, cls){
+    const tint = TYPE_COLORS[p.type1] || "#999";
+    const bg = `background:linear-gradient(160deg, ${tint}22, ${tint}0d);color:${tint}`;
+    const img = p.art ? `<img src="${ART_FOLDER}${p.art}" alt="${p.name}" onerror="this.style.display='none'">` : "";
+    return `<div class="${cls}" style="${bg}">${BALL_SVG}${img}</div>`;
+  }
+
+  let activeType = "All";
+  let query = "";
+
+  const grid = document.getElementById("grid");
+  const filtersEl = document.getElementById("filters");
+  const emptyEl = document.getElementById("empty");
+  const resultline = document.getElementById("resultline");
+
+  // build filter chips: All + 18 types
+  function buildFilters(){
+    const chips = ["All", ...Object.keys(TYPE_COLORS)];
+    filtersEl.innerHTML = chips.map(t => {
+      const col = t === "All" ? "var(--ink)" : TYPE_COLORS[t];
+      const activeStyle = t===activeType ? `background:${col};color:${t==='All'?'#fff':readableText(TYPE_COLORS[t])}` : '';
+      return `<button class="chip" data-type="${t}" aria-pressed="${t===activeType}" style="${activeStyle}"><span class="swatch" style="background:${col}"></span>${t}</button>`;
+    }).join("");
+    filtersEl.querySelectorAll(".chip").forEach(btn => {
+      btn.addEventListener("click", () => { activeType = btn.dataset.type; buildFilters(); render(); });
+    });
+  }
+
+  function matches(p){
+    // type filter (primary OR secondary)
+    if(activeType !== "All" && p.type1 !== activeType && p.type2 !== activeType) return false;
+    // search
+    if(query){
+      const q = query.trim().toLowerCase().replace(/^#/, "");
+      const byNameMatch = p.name.toLowerCase().includes(q);
+      const byNum = String(p.dex) === q || pad(p.dex).includes(q);
+      if(!byNameMatch && !byNum) return false;
+    }
+    return true;
+  }
+
+  function render(){
+    const list = POKEMON.filter(matches).sort((a,b) => a.dex - b.dex);
+    grid.innerHTML = list.map(p => `
+      <div class="card" tabindex="0" role="button" data-dex="${p.dex}" aria-label="${p.name}, number ${pad(p.dex)}">
+        ${artMarkup(p, "thumb")}
+        <div class="dex">#${pad(p.dex)}</div>
+        <div class="pname">${p.name}</div>
+        ${p.variant ? `<div class="variant-flag">${VARIANT_LABEL[p.variant]||""}</div>` : ""}
+        <div class="badges">${badge(p.type1)}${badge(p.type2)}</div>
+      </div>`).join("");
+
+    grid.querySelectorAll(".card").forEach(card => {
+      const open = () => openModal(Number(card.dataset.dex));
+      card.addEventListener("click", open);
+      card.addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); open(); }});
+    });
+
+    emptyEl.style.display = list.length ? "none" : "block";
+    resultline.textContent = `Showing ${list.length} of ${POKEMON.length} Pokemon${activeType!=="All"?` \u00b7 ${activeType} type`:""}`;
+  }
+
+  /* ---------------- Modal ---------------- */
+  const overlay = document.getElementById("overlay");
+  const modalBody = document.getElementById("modalBody");
+  const closeBtn = document.getElementById("closeBtn");
+  let lastFocused = null;
+
+  const findByName = name => POKEMON.find(p => p.name === name);
+
+  function evoName(name){
+    const target = findByName(name);
+    if(!target) return `<span>${name}</span>`;
+    return `<button class="evo-link" data-dex="${target.dex}">${name}</button>`;
+  }
+
+  function evolutionBlock(p){
+    const rows = [];
+    if(p.stage) rows.push(`<div class="evo-line"><span style="color:var(--muted)">Stage:</span> ${p.stage}</div>`);
+    if(p.evolvesFrom) rows.push(`<div class="evo-line">Evolves from ${evoName(p.evolvesFrom)}</div>`);
+    if(p.evolvesInto){
+      const req = p.method ? ` <span class="evo-req">${p.method}</span>` : "";
+      rows.push(`<div class="evo-line">Evolves into ${evoName(p.evolvesInto)}${req}</div>`);
+    }
+    if(!p.evolvesFrom && !p.evolvesInto) rows.push(`<div class="evo-line" style="color:var(--muted)">Does not evolve.</div>`);
+    return rows.join("");
+  }
+
+  function openModal(dex){
+    const p = POKEMON.find(x => x.dex === dex);
+    if(!p) return;
+    const tint = TYPE_COLORS[p.type1] || "#999";
+    const tint2 = TYPE_COLORS[p.type2] || tint;
+    modalBody.innerHTML = `
+      <div class="modal-head">
+        <div class="banner" style="background:linear-gradient(135deg, ${tint}, ${tint2})"></div>
+      </div>
+      <div class="modal-grid">
+        <div>${artMarkup(p, "modal-art")}</div>
+        <div>
+          <div class="m-dex">#${pad(p.dex)}</div>
+          <div class="m-name" id="modalName">${p.name}</div>
+          ${p.variant ? `<span class="m-pill">${VARIANT_LABEL[p.variant]||""}</span>` : ""}
+          <div class="m-badges">${badge(p.type1)}${badge(p.type2)}</div>
+
+          <div class="field"><div class="label">Category</div><div class="value">${p.category || "\u2014"}</div></div>
+          <div class="field"><div class="label">Evolution</div><div class="value">${evolutionBlock(p)}</div></div>
+        </div>
+      </div>`;
+
+    // wire up clickable evolution names
+    modalBody.querySelectorAll(".evo-link").forEach(b =>
+      b.addEventListener("click", () => openModal(Number(b.dataset.dex))));
+
+    if(!overlay.classList.contains("open")){
+      lastFocused = document.activeElement;
+      overlay.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+    closeBtn.focus();
+  }
+
+  function closeModal(){
+    overlay.classList.remove("open");
+    document.body.style.overflow = "";
+    if(lastFocused) lastFocused.focus();
+  }
+
+  closeBtn.addEventListener("click", closeModal);
+  overlay.addEventListener("click", e => { if(e.target === overlay) closeModal(); });
+  document.addEventListener("keydown", e => { if(e.key === "Escape" && overlay.classList.contains("open")) closeModal(); });
+
+  /* ---------------- Search ---------------- */
+  document.getElementById("search").addEventListener("input", e => { query = e.target.value; render(); });
+
+  /* ---------------- Init ---------------- */
+  async function init(){
+    document.getElementById("year").textContent = new Date().getFullYear();
+    resultline.textContent = "Loading Pokemon\u2026";
+    buildFilters();
+
+    await loadPokemon();
+
+    document.getElementById("heroCount").textContent = `${POKEMON.length} Pokemon catalogued`;
+    render();
+  }
+  init();
+
+})();
+</script>
+
+
+</body></html>
